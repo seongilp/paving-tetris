@@ -1,0 +1,11 @@
+{
+  "name": "paving-tetris",
+  "version": "1.0.0",
+  "description": "보도블록 — 예쁘게 까는 게 전부인 테트리스",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "serve": "python3 -m http.server 8123"
+  }
+}

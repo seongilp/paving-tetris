@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#1c1f22">
+<meta name="description" content="줄이 사라지지 않는 테트리스. 오직 예쁜 패턴으로 보도블록을 까는 게 목적인 게임.">
+<title>보도블록 — 예쁘게 까는 게 전부인 테트리스</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="app">
+  <header class="head">
+    <div class="titles">
+      <h1>보도블록</h1>
+      <p>예쁘게 까는 게 전부인 테트리스</p>
+    </div>
+    <button id="pause" type="button" class="ghost-btn">일시정지</button>
+  </header>
+
+  <section class="hud">
+    <div class="meters">
+      <div class="meter"><span>점수</span><b id="score">0</b></div>
+      <div class="meter"><span>레벨</span><b id="level">1</b></div>
+      <div class="meter"><span>최고</span><b id="best">0</b></div>
+    </div>
+    <div class="preview">
+      <span>다음</span>
+      <canvas id="next" width="74" height="74" aria-label="다음 조각"></canvas>
+    </div>
+  </section>
+
+  <p id="toast" class="toast" aria-live="polite"></p>
+
+  <section class="stage">
+    <canvas id="board" aria-label="보도블록 판"></canvas>
+  </section>
+
+  <footer class="help">
+    <p><b>줄은 사라지지 않는다.</b> 헤링본 +3, 바구니짜기 +5, 완성 줄 +10, 악센트 +4, 구멍 −2.</p>
+    <p class="keys">← → 이동 · ↑/Z/X 회전 · ↓ 소프트드롭 · Space 하드드롭 · P 일시정지<br>
+      모바일: 좌우 스와이프 이동 · 탭 회전 · 아래로 길게 밀면 하드드롭</p>
+  </footer>
+</main>
+
+<div id="overlay" class="overlay" hidden>
+  <div class="card">
+    <h2>다 깔았다</h2>
+    <p class="final">최종 <b id="final-score">0</b>점</p>
+    <div id="final-stats" class="stats"></div>
+    <div class="buttons">
+      <button id="save" type="button" class="primary">이미지로 저장</button>
+      <button id="restart" type="button" class="ghost-btn">다시 깔기</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="game.js"></script>
+</body>
+</html>
