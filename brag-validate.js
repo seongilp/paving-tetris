@@ -1,10 +1,15 @@
-// 자랑하기 제출 검증 — 순수 함수만. 서버(api/brag.js)와 테스트가 공유한다.
+// 자랑하기 제출 검증 — 순수 함수만, Node 전용 모듈 의존 없음(브라우저의 brag.js 도 이 파일을 쓴다).
 import { replayGame, COLS, ROWS, MAX_PIECES } from './replay.js';
 
 export const NAME_MIN = 2;
 export const NAME_MAX = 12;
 export const MAX_BODY_BYTES = 32 * 1024;
 export const STAT_KEYS = Object.freeze(['herringbone', 'basket', 'rows', 'accent', 'monotony', 'holes']);
+
+export const DEVICE_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const COMMENT_NAME_MIN = 1;
+export const COMMENT_NAME_MAX = 12;
+export const COMMENT_TEXT_MAX = 200;
 
 // 한글·영문·숫자·공백·_ . - 만. <>&"' 같은 마크업 문자는 애초에 거른다.
 const NAME_RE = /^[\p{L}\p{N} _.\-]+$/u;
@@ -104,3 +109,42 @@ export function escapeHtml(text) {
 export function makeId(now = Date.now(), random = Math.random) {
   return `${now.toString(36)}${Math.floor(random() * 36 ** 6).toString(36).padStart(6, '0')}`;
 }
+
+// 브라우저별 deviceId(UUID v4 형식). 서버는 형식만 검증하고 신원 증명으로는 쓰지 않는다.
+export function validateDeviceId(raw) {
+  if (typeof raw !== 'string') return fail('device id 가 없다');
+  const id = raw.trim();
+  if (id.length !== 36 || !DEVICE_ID_RE.test(id)) return fail('device id 형식이 잘못됐다');
+  return { ok: true, value: id };
+}
+
+const stripControlChars = (text) => text.replace(/[\x00-\x1f\x7f]/g, '');
+
+export function validateCommentName(raw) {
+  if (typeof raw !== 'string') return fail('이름은 문자열이어야 한다');
+  const name = stripControlChars(raw).normalize('NFC').replace(/\s+/g, ' ').trim();
+  const length = [...name].length;
+  if (length < COMMENT_NAME_MIN || length > COMMENT_NAME_MAX) {
+    return fail(`이름은 ${COMMENT_NAME_MIN}~${COMMENT_NAME_MAX}자`);
+  }
+  return { ok: true, value: name };
+}
+
+export function validateCommentText(raw) {
+  if (typeof raw !== 'string') return fail('내용은 문자열이어야 한다');
+  const text = stripControlChars(raw).normalize('NFC').trim();
+  const length = [...text].length;
+  if (length < 1 || length > COMMENT_TEXT_MAX) return fail(`댓글은 1~${COMMENT_TEXT_MAX}자`);
+  return { ok: true, value: text };
+}
+
+// 댓글 제출 검증. name/text 둘 다 통과해야 한다.
+export function validateComment(body) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return fail('JSON 객체가 필요하다');
+  const name = validateCommentName(body.name);
+  if (!name.ok) return name;
+  const text = validateCommentText(body.text);
+  if (!text.ok) return text;
+  return { ok: true, value: { name: name.value, text: text.value } };
+}
+

@@ -47,18 +47,29 @@ ES 모듈을 쓰므로 `file://` 로는 열리지 않는다. 아무 정적 서�
 ## 자랑하기 게시판
 
 `board.html` — 상위 50(점수순) · 최근 20. 닉네임·점수·패턴 뱃지·미니 보드를 보여주고 내 기록은 강조된다.
+각 카드에는 좋아요·댓글 수(♥N · 💬N)도 작게 붙는다. 미니 보드를 눌러 크게 보면(라이트박스) 좋아요를 누르고
+댓글을 달 수 있다.
 
 백엔드는 Vercel Function `api/brag.js` 하나, 저장소는 Upstash Redis (`KV_REST_API_URL`, `KV_REST_API_TOKEN`).
 
 | | |
 |---|---|
-| `GET /api/brag?tab=top\|recent` | `{ ok, tab, items[] }` — `s-maxage=10, stale-while-revalidate=60` |
+| `GET /api/brag?tab=top\|recent` | `{ ok, tab, items[] }` — 각 항목에 `likes`/`comments` 카운트 포함(파이프라인 1회, N+1 없음). `s-maxage=10, stale-while-revalidate=60` |
 | `POST /api/brag` | `{ name, score, stats, board, placed, landed }` → `{ ok, id, rank, score }` |
+| `GET /api/brag?action=comments&id=<id>` | 라이트박스가 열릴 때 한 번에: `{ ok, liked, likes, comments[] }` (최신순 최대 50). 없는 id 는 404 |
+| `POST /api/brag?action=like&id=<id>` | 좋아요 토글 → `{ ok, liked, count }`. `X-Device-Id` 헤더 필요(없거나 형식 오류면 400), 없는 id 는 404 |
+| `POST /api/brag?action=comment&id=<id>` | `{ name, text }` → `{ ok, comment, count }`(201). `X-Device-Id` 필요, 같은 (id, device) 는 10초에 1회(초과 429), 없는 id 는 404 |
 
 점수는 클라이언트를 믿지 않는다. `placed`(조각 배치 기록)를 받아 `replay.js` 로 처음부터 다시 깔아
 점수·통계·격자가 모두 일치할 때만 저장한다(불일치 400). 닉네임 2~12자·허용 문자만, 바디 32KB, IP당 분당 5회.
 
-Redis 키: `brag:top`(ZSET score→id) · `brag:recent`(LIST, 200개) · `brag:e:{id}`(JSON) · `brag:rl:{ip}`(rate limit).
+좋아요·댓글의 신원은 브라우저별 `deviceId`(UUID, `localStorage`에 저장, `X-Device-Id` 헤더로 전송)뿐이다.
+서버는 형식(36자 UUID)만 검증하고 진짜 신원 증명으로는 쓰지 않는다. 댓글 이름 1~12자·내용 1~200자,
+트림·제어문자 제거 후 서버에서도 재검증한다. 저장 시 deviceId 원문 대신 짧은 해시(앞 8자)만 남기고 삭제 기능은 없다.
+
+Redis 키: `brag:top`(ZSET score→id) · `brag:recent`(LIST, 200개) · `brag:e:{id}`(JSON) · `brag:rl:{ip}`(제출 rate limit) ·
+`brag:likes:{id}`(SET, deviceId) · `brag:comments:{id}`(LIST, 최대 200개 LTRIM, 오래된 것부터 밀려나고 삭제되진 않는다) ·
+`brag:crl:{id}:{deviceId}`(댓글 rate limit, SET NX EX 10초).
 
 로컬에서 API까지 띄우려면 `.env.local` 을 둔 채 `vercel dev` (실제 Redis에 기록되니 주의).
 
@@ -84,13 +95,14 @@ Redis 키: `brag:top`(ZSET score→id) · `brag:recent`(LIST, 200개) · `brag:e
 | `input.js` | 키보드 / 터치 입력 |
 | `game.js` | 게임 루프, 상태, HUD, 이미지 저장 |
 | `replay.js` | 배치 기록으로 게임 재계산 — 클라이언트 채점과 서버 검증이 공유 |
-| `brag.js` | 종료 오버레이의 자랑하기 폼, 닉네임·내 기록 id 기억 |
-| `brag-validate.js` | 제출 검증(닉네임·형식·재계산 대조), 직렬화 — 순수 함수 |
-| `brag-store.js` | Redis 키 구조와 목록·저장·rate limit |
-| `brag-handler.js` | `/api/brag` 요청 처리 (redis 주입 가능) |
+| `brag.js` | 종료 오버레이의 자랑하기 폼, 닉네임·내 기록 id·`deviceId` 기억 |
+| `brag-validate.js` | 제출·좋아요·댓글 검증(닉네임·형식·재계산 대조), 직렬화 — 순수 함수, Node 의존 없음(브라우저도 씀) |
+| `brag-store.js` | Redis 키 구조와 목록·저장·좋아요·댓글·rate limit (Node 전용, `hashDeviceId` 포함) |
+| `brag-handler.js` | `/api/brag` 요청 처리 — 제출/목록/좋아요/댓글 라우팅 (redis 주입 가능) |
 | `brag-format.js` | 상대 시각, 스탯 뱃지 |
+| `brag-social.js` | 좋아요·댓글 API 클라이언트 — `board.js` 라이트박스가 사용 |
 | `api/brag.js` | Vercel Function 진입점 |
-| `board.html` / `board.js` | 게시판 화면, 미니 보드는 `render.js` 스프라이트 재사용 |
+| `board.html` / `board.js` | 게시판 화면, 미니 보드는 `render.js` 스프라이트 재사용, 라이트박스에 좋아요·댓글 |
 
 ## 테스트
 
@@ -98,8 +110,9 @@ Redis 키: `brag:top`(ZSET score→id) · `brag:recent`(LIST, 200개) · `brag:e
 node --test
 ```
 
-`pattern.js` 의 판정 규칙(헤링본·바구니짜기·구멍·완성 줄·단조·악센트·합산) 8개와
-자랑하기 검증(재계산 대조·닉네임·저장소·핸들러·포맷) 15개, 총 23개 테스트. 핸들러는 가짜 Redis 로 직접 호출한다.
+`pattern.js` 의 판정 규칙(헤링본·바구니짜기·구멍·완성 줄·단조·악센트·합산) 8개, 라이트박스 레이아웃 5개,
+자랑하기(재계산 대조·닉네임·저장소·핸들러·포맷) + 좋아요·댓글(검증·토글·LTRIM·rate limit·목록 카운트) 28개,
+총 43개 테스트. 핸들러는 가짜 Redis 로 직접 호출한다.
 
 ---
 

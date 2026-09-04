@@ -3,6 +3,8 @@ import { validateName } from './brag-validate.js';
 
 const NAME_KEY = 'paving-tetris.name';
 const IDS_KEY = 'paving-tetris.brag-ids';
+const DEVICE_KEY = 'paving-tetris.device-id';
+const COMMENT_NAME_KEY = 'paving-tetris.comment-name';
 const MAX_IDS = 50;
 
 const readStore = (key, fallback) => {
@@ -28,6 +30,19 @@ export const readMyIds = () => {
 };
 
 const rememberId = (id) => writeStore(IDS_KEY, [id, ...readMyIds()].slice(0, MAX_IDS));
+
+// 브라우저별 좋아요·댓글 식별자. localStorage 에 없으면 만들어 저장한다(저장 불가 환경은 매번 새로 만든다).
+export function getDeviceId() {
+  const existing = readStore(DEVICE_KEY, null);
+  if (typeof existing === 'string' && existing) return existing;
+  const id = crypto.randomUUID();
+  writeStore(DEVICE_KEY, id);
+  return id;
+}
+
+// 댓글 폼의 이름 기억 — 자랑하기 폼에서 쓴 이름이 있으면 그걸 기본값으로.
+export const readCommentName = () => readStore(COMMENT_NAME_KEY, '') || readStore(NAME_KEY, '') || '';
+export const rememberCommentName = (name) => writeStore(COMMENT_NAME_KEY, name);
 
 export async function submitBrag(payload, fetchImpl = fetch) {
   const res = await fetchImpl('/api/brag', {

@@ -291,3 +291,73 @@ h1 {
 
 .meta { font-size: 11px; color: var(--dim); }
 .me { color: var(--sage); font-weight: 600; }
+.social { font-size: 11px; color: var(--dim); }
+
+/* ---------- 좋아요 · 댓글 ---------- */
+
+.lightbox-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+.like-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font: inherit;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--dim);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.like-btn:hover { border-color: var(--sage); }
+.like-btn:disabled { opacity: 0.6; cursor: default; }
+.like-btn.liked { color: var(--sage); border-color: var(--sage); }
+.like-heart { font-size: 13px; }
+
+.comments {
+  width: 100%;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: min(40vh, 280px);
+}
+
+.comment-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.comment { border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.comment:last-child { border-bottom: none; padding-bottom: 0; }
+.comment-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.comment-name { font-size: 12.5px; }
+.comment-time { font-size: 10.5px; color: var(--dim); white-space: nowrap; }
+.comment-text { margin: 3px 0 0; font-size: 13px; line-height: 1.4; word-break: break-word; }
+
+.comment-form { display: flex; flex-direction: column; gap: 6px; }
+.comment-row { display: flex; gap: 6px; }
+.comment-row input {
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  min-width: 0;
+}
+.comment-row input:focus { outline: none; border-color: var(--sage); }
+#comment-name { flex: 0 0 30%; }
+#comment-text { flex: 1; }
+.comment-submit { align-self: flex-end; padding: 6px 16px; }

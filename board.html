@@ -37,7 +37,25 @@
         <span id="lightbox-score" class="score"></span>
       </div>
       <div id="lightbox-badges" class="badges"></div>
-      <div id="lightbox-meta" class="meta"></div>
+      <div class="lightbox-actions">
+        <div id="lightbox-meta" class="meta"></div>
+        <button type="button" id="lightbox-like" class="like-btn" aria-pressed="false">
+          <span class="like-heart" aria-hidden="true">♥</span>
+          <span id="lightbox-like-count">0</span>
+        </button>
+      </div>
+
+      <div class="comments">
+        <p id="comments-msg" class="board-msg" aria-live="polite"></p>
+        <ol id="comment-list" class="comment-list"></ol>
+        <form id="comment-form" class="comment-form" autocomplete="off">
+          <div class="comment-row">
+            <input id="comment-name" type="text" minlength="1" maxlength="12" placeholder="이름" required>
+            <input id="comment-text" type="text" minlength="1" maxlength="200" placeholder="댓글 달기" required>
+          </div>
+          <button type="submit" id="comment-submit" class="ghost-btn comment-submit">등록</button>
+        </form>
+      </div>
     </div>
   </div>
 </div>

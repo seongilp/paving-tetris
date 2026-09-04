@@ -2,8 +2,9 @@
 import { PALETTE, spriteFor, drawSprite, drawBackdrop } from './render.js';
 import { COLS, ROWS, ACCENT_TONE, isValidPiece, gridToneAt } from './replay.js';
 import { relativeTime, statBadges } from './brag-format.js';
-import { readMyIds } from './brag.js';
+import { readMyIds, getDeviceId, readCommentName, rememberCommentName } from './brag.js';
 import { lightboxCell } from './lightbox-layout.js';
+import { fetchEntryDetail, toggleLikeRequest, postComment } from './brag-social.js';
 
 const MINI_CELL = 7;
 const list = document.getElementById('list');
@@ -11,6 +12,7 @@ const msg = document.getElementById('board-msg');
 const tabs = [...document.querySelectorAll('.tab')];
 const myIds = new Set(readMyIds());
 const dpr = Math.min(window.devicePixelRatio || 1, 2);
+const deviceId = getDeviceId();
 
 const lightbox = document.getElementById('lightbox');
 const lightboxCanvas = document.getElementById('lightbox-canvas');
@@ -19,6 +21,14 @@ const lightboxScore = document.getElementById('lightbox-score');
 const lightboxBadges = document.getElementById('lightbox-badges');
 const lightboxMeta = document.getElementById('lightbox-meta');
 const lightboxClose = document.getElementById('lightbox-close');
+const lightboxLike = document.getElementById('lightbox-like');
+const lightboxLikeCount = document.getElementById('lightbox-like-count');
+const commentsMsg = document.getElementById('comments-msg');
+const commentList = document.getElementById('comment-list');
+const commentForm = document.getElementById('comment-form');
+const commentNameInput = document.getElementById('comment-name');
+const commentTextInput = document.getElementById('comment-text');
+const commentSubmit = document.getElementById('comment-submit');
 
 const toneColor = (t) => (t === ACCENT_TONE ? PALETTE.accent : PALETTE.tones[t] || PALETTE.tones[0]);
 
@@ -82,7 +92,8 @@ function renderEntry(entry, index, tab) {
   for (const text of statBadges(entry.stats)) badges.append(el('span', 'badge', text));
   const meta = el('div', 'meta', `블록 ${entry.landed ?? '?'}장 · ${relativeTime(entry.at)}`);
   if (myIds.has(entry.id)) meta.append(' · ', el('span', 'me', '내 기록'));
-  body.append(top, badges, meta);
+  const social = el('div', 'social', `♥ ${entry.likes ?? 0} · 💬 ${entry.comments ?? 0}`);
+  body.append(top, badges, meta, social);
   li.append(rank, canvas, body);
   return li;
 }
@@ -106,9 +117,25 @@ async function load(tab) {
 }
 
 let lastFocused = null;
+let currentEntry = null;
 
-function openLightbox(entry) {
+function renderLike(liked, count) {
+  lightboxLike.setAttribute('aria-pressed', String(liked));
+  lightboxLike.classList.toggle('liked', liked);
+  lightboxLikeCount.textContent = String(Math.max(0, count));
+}
+
+function renderComment(c) {
+  const li = el('li', 'comment');
+  const top = el('div', 'comment-top');
+  top.append(el('b', 'comment-name', c.name), el('span', 'comment-time', relativeTime(c.ts)));
+  li.append(top, el('p', 'comment-text', c.text));
+  return li;
+}
+
+async function openLightbox(entry) {
   lastFocused = document.activeElement;
+  currentEntry = entry;
   const cell = lightboxCell(window.innerWidth, COLS);
   renderBoard(lightboxCanvas, entry, cell);
   lightboxCanvas.setAttribute('aria-label', `${entry.name}의 바닥`);
@@ -116,14 +143,31 @@ function openLightbox(entry) {
   lightboxScore.textContent = `${entry.score}점`;
   lightboxBadges.replaceChildren(...statBadges(entry.stats).map((text) => el('span', 'badge', text)));
   lightboxMeta.textContent = `블록 ${entry.landed ?? '?'}장 · ${relativeTime(entry.at)}${myIds.has(entry.id) ? ' · 내 기록' : ''}`;
+  renderLike(false, entry.likes ?? 0);
+  commentList.replaceChildren();
+  commentNameInput.value = readCommentName();
+  commentTextInput.value = '';
+  commentsMsg.textContent = '불러오는 중…';
   lightbox.hidden = false;
   document.body.style.overflow = 'hidden';
   lightboxClose.focus();
+
+  try {
+    const data = await fetchEntryDetail(entry.id, deviceId);
+    if (currentEntry !== entry) return; // 그 사이 다른 항목이 열렸으면 버린다
+    renderLike(data.liked, data.likes);
+    commentsMsg.textContent = data.comments.length ? '' : '아직 댓글이 없다. 첫 댓글을 남겨보자.';
+    commentList.replaceChildren(...data.comments.map(renderComment));
+  } catch (err) {
+    if (currentEntry !== entry) return;
+    commentsMsg.textContent = `댓글을 불러오지 못했다: ${err.message}`;
+  }
 }
 
 function closeLightbox() {
   if (lightbox.hidden) return;
   lightbox.hidden = true;
+  currentEntry = null;
   document.body.style.overflow = '';
   if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
 }
@@ -134,6 +178,44 @@ lightbox.addEventListener('click', (e) => {
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !lightbox.hidden) closeLightbox();
+});
+
+lightboxLike.addEventListener('click', async () => {
+  const entry = currentEntry;
+  if (!entry || lightboxLike.disabled) return;
+  const wasLiked = lightboxLike.getAttribute('aria-pressed') === 'true';
+  const prevCount = Number(lightboxLikeCount.textContent) || 0;
+  lightboxLike.disabled = true;
+  renderLike(!wasLiked, prevCount + (wasLiked ? -1 : 1)); // 옵티미스틱 업데이트
+  try {
+    const data = await toggleLikeRequest(entry.id, deviceId);
+    if (currentEntry === entry) renderLike(data.liked, data.count);
+  } catch {
+    if (currentEntry === entry) renderLike(wasLiked, prevCount); // 실패 시 롤백
+  } finally {
+    lightboxLike.disabled = false;
+  }
+});
+
+commentForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const entry = currentEntry;
+  if (!entry) return;
+  const name = commentNameInput.value;
+  const text = commentTextInput.value;
+  commentSubmit.disabled = true;
+  commentsMsg.textContent = '올리는 중…';
+  try {
+    const data = await postComment(entry.id, deviceId, { name, text });
+    rememberCommentName(data.comment.name);
+    commentTextInput.value = '';
+    commentsMsg.textContent = '';
+    commentList.prepend(renderComment(data.comment));
+  } catch (err) {
+    commentsMsg.textContent = err.message || '댓글을 올리지 못했다';
+  } finally {
+    commentSubmit.disabled = false;
+  }
 });
 
 function selectTab(tab) {
