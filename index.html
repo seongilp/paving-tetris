@@ -15,7 +15,10 @@
       <h1>보도블록</h1>
       <p>예쁘게 까는 게 전부인 테트리스</p>
     </div>
-    <button id="pause" type="button" class="ghost-btn">일시정지</button>
+    <div class="head-actions">
+      <a class="ghost-btn link-btn" href="board.html">자랑하기 게시판</a>
+      <button id="pause" type="button" class="ghost-btn">일시정지</button>
+    </div>
   </header>
 
   <section class="hud">
@@ -48,8 +51,16 @@
     <h2>다 깔았다</h2>
     <p class="final">최종 <b id="final-score">0</b>점</p>
     <div id="final-stats" class="stats"></div>
+    <form id="brag-form" class="brag" autocomplete="off">
+      <label class="brag-row">
+        <span>닉네임</span>
+        <input id="brag-name" type="text" minlength="2" maxlength="12" placeholder="2~12자" required>
+        <button id="brag-submit" type="submit" class="primary">자랑하기</button>
+      </label>
+      <p id="brag-msg" class="brag-msg" aria-live="polite"></p>
+    </form>
     <div class="buttons">
-      <button id="save" type="button" class="primary">이미지로 저장</button>
+      <button id="save" type="button" class="ghost-btn">이미지로 저장</button>
       <button id="restart" type="button" class="ghost-btn">다시 깔기</button>
     </div>
   </div>

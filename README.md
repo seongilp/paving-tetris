@@ -41,8 +41,26 @@ ES 모듈을 쓰므로 `file://` 로는 열리지 않는다. 아무 정적 서�
 | 구멍 | **−2** | 위가 막힌 빈 셀이 새로 생길 때마다 |
 | 단조로움 | **−1** | 같은 방향이 3개 이상 나란히 이어진 구간 — 소폭 감점 |
 
-꼭대기에 닿으면 끝. 깔린 바닥과 패턴 통계를 보여주고, PNG로 저장할 수 있다.
-최고 점수는 `localStorage`에 남는다 (저장이 막힌 환경에서는 조용히 건너뛴다).
+꼭대기에 닿으면 끝. 깔린 바닥과 패턴 통계를 보여주고, PNG로 저장하거나 **자랑하기**로 게시판에 올릴 수 있다.
+최고 점수와 닉네임은 `localStorage`에 남는다 (저장이 막힌 환경에서는 조용히 건너뛴다).
+
+## 자랑하기 게시판
+
+`board.html` — 상위 50(점수순) · 최근 20. 닉네임·점수·패턴 뱃지·미니 보드를 보여주고 내 기록은 강조된다.
+
+백엔드는 Vercel Function `api/brag.js` 하나, 저장소는 Upstash Redis (`KV_REST_API_URL`, `KV_REST_API_TOKEN`).
+
+| | |
+|---|---|
+| `GET /api/brag?tab=top\|recent` | `{ ok, tab, items[] }` — `s-maxage=10, stale-while-revalidate=60` |
+| `POST /api/brag` | `{ name, score, stats, board, placed, landed }` → `{ ok, id, rank, score }` |
+
+점수는 클라이언트를 믿지 않는다. `placed`(조각 배치 기록)를 받아 `replay.js` 로 처음부터 다시 깔아
+점수·통계·격자가 모두 일치할 때만 저장한다(불일치 400). 닉네임 2~12자·허용 문자만, 바디 32KB, IP당 분당 5회.
+
+Redis 키: `brag:top`(ZSET score→id) · `brag:recent`(LIST, 200개) · `brag:e:{id}`(JSON) · `brag:rl:{ip}`(rate limit).
+
+로컬에서 API까지 띄우려면 `.env.local` 을 둔 채 `vercel dev` (실제 Redis에 기록되니 주의).
 
 ## 조각
 
@@ -65,6 +83,14 @@ ES 모듈을 쓰므로 `file://` 로는 열리지 않는다. 아무 정적 서�
 | `render.js` | 물결 실루엣 그리기, 스프라이트 캐시, 팔레트 |
 | `input.js` | 키보드 / 터치 입력 |
 | `game.js` | 게임 루프, 상태, HUD, 이미지 저장 |
+| `replay.js` | 배치 기록으로 게임 재계산 — 클라이언트 채점과 서버 검증이 공유 |
+| `brag.js` | 종료 오버레이의 자랑하기 폼, 닉네임·내 기록 id 기억 |
+| `brag-validate.js` | 제출 검증(닉네임·형식·재계산 대조), 직렬화 — 순수 함수 |
+| `brag-store.js` | Redis 키 구조와 목록·저장·rate limit |
+| `brag-handler.js` | `/api/brag` 요청 처리 (redis 주입 가능) |
+| `brag-format.js` | 상대 시각, 스탯 뱃지 |
+| `api/brag.js` | Vercel Function 진입점 |
+| `board.html` / `board.js` | 게시판 화면, 미니 보드는 `render.js` 스프라이트 재사용 |
 
 ## 테스트
 
@@ -72,7 +98,8 @@ ES 모듈을 쓰므로 `file://` 로는 열리지 않는다. 아무 정적 서�
 node --test
 ```
 
-`pattern.js` 의 판정 규칙(헤링본·바구니짜기·구멍·완성 줄·단조·악센트·합산)을 8개 테스트로 검증한다.
+`pattern.js` 의 판정 규칙(헤링본·바구니짜기·구멍·완성 줄·단조·악센트·합산) 8개와
+자랑하기 검증(재계산 대조·닉네임·저장소·핸들러·포맷) 15개, 총 23개 테스트. 핸들러는 가짜 Redis 로 직접 호출한다.
 
 ---
 

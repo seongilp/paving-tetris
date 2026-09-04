@@ -1,10 +1,10 @@
-import { createBoard, scorePlacement, countHoles } from './pattern.js';
+import { createBoard, countHoles } from './pattern.js';
 import { cellsOf, boundsOf, randomShapeId, rotationCount } from './shapes.js';
 import { PALETTE, spriteFor, drawSprite, drawGhost, drawBackdrop } from './render.js';
 import { attachKeyboard, attachTouch } from './input.js';
+import { COLS, ROWS, ACCENT_TONE, LEVEL_STEP, emptyStats, addResult, applyPlacement, boardToGrid } from './replay.js';
+import { setupBrag } from './brag.js';
 
-const COLS = 10;
-const ROWS = 14;
 const ACCENT_RATE = 0.1;
 const BEST_KEY = 'paving-tetris.best';
 
@@ -56,11 +56,13 @@ const writeBest = (value) => {
 function makePiece() {
   const shapeId = randomShapeId();
   const accent = Math.random() < ACCENT_RATE;
-  const tone = accent
-    ? PALETTE.accent
-    : PALETTE.tones[Math.floor(Math.random() * PALETTE.tones.length)];
-  return { shapeId, rotation: 0, x: 0, y: 0, tone, accent };
+  const toneIndex = accent ? ACCENT_TONE : Math.floor(Math.random() * PALETTE.tones.length);
+  const tone = accent ? PALETTE.accent : PALETTE.tones[toneIndex];
+  return { shapeId, rotation: 0, x: 0, y: 0, tone, toneIndex, accent };
 }
+
+// 전송·재계산용 압축 표현: { s, r, x, y, t }
+const packPiece = (p) => ({ s: p.shapeId, r: p.rotation, x: p.x, y: p.y, t: p.toneIndex });
 
 function newGame() {
   state = {
@@ -70,7 +72,7 @@ function newGame() {
     next: makePiece(),
     score: 0,
     best: readBest(),
-    stats: { herringbone: 0, basket: 0, monotony: 0, accent: 0, rows: 0, holes: 0 },
+    stats: emptyStats(),
     scoredRows: [],
     landed: 0,
     level: 1,
@@ -79,16 +81,9 @@ function newGame() {
   };
   rebuildLayer();
   dom.overlay.hidden = true;
+  brag.reset();
   spawn();
   syncHud();
-}
-
-function occupiedCells(piece) {
-  return cellsOf(piece.shapeId, piece.rotation).map((c) => ({
-    x: piece.x + c.x,
-    y: piece.y + c.y,
-    orient: c.orient,
-  }));
 }
 
 function fits(piece, x = piece.x, y = piece.y, rotation = piece.rotation) {
@@ -161,25 +156,20 @@ function ghostY(piece) {
 
 function lock() {
   const piece = state.current;
-  const cells = occupiedCells(piece);
-  for (const c of cells) state.board[c.y][c.x] = { orient: c.orient, accent: piece.accent };
   state.placed.push({ ...piece });
   blitPiece(layerCtx, piece);
 
-  const result = scorePlacement(state.board, cells, {
+  // 서버 재계산(replay.js)과 완전히 같은 경로로 채점한다
+  const { board, result } = applyPlacement(state.board, packPiece(piece), {
     holes: state.stats.holes,
     scoredRows: state.scoredRows,
   });
+  state.board = board;
   state.score = Math.max(0, state.score + result.points);
-  state.stats.herringbone += result.herringbone;
-  state.stats.basket += result.basket;
-  state.stats.monotony += result.monotony;
-  state.stats.accent += result.accent;
-  state.stats.rows += result.newRows.length;
-  state.stats.holes = result.holes;
+  state.stats = addResult(state.stats, result);
   state.scoredRows.push(...result.newRows);
   state.landed += 1;
-  state.level = 1 + Math.floor(state.landed / 12);
+  state.level = 1 + Math.floor(state.landed / LEVEL_STEP);
   if (state.score > state.best) {
     state.best = state.score;
     writeBest(state.best);
@@ -228,6 +218,13 @@ function gameOver() {
   ]
     .map(([k, v]) => `<div class="stat"><span>${k}</span><b>${v}</b></div>`)
     .join('');
+  brag.arm(() => ({
+    score: state.score,
+    stats: { ...state.stats, holes: countHoles(state.board) },
+    board: boardToGrid(state.board),
+    placed: state.placed.map(packPiece),
+    landed: state.placed.length,
+  }));
   dom.overlay.hidden = false;
 }
 
@@ -377,6 +374,7 @@ const actions = {
   },
 };
 
+const brag = setupBrag();
 resize();
 newGame();
 window.addEventListener('resize', resize);

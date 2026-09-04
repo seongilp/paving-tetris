@@ -167,3 +167,83 @@ h1 {
 
 .buttons { display: flex; gap: 8px; }
 .buttons button { flex: 1; }
+
+/* ---------- 자랑하기 ---------- */
+
+.head-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.link-btn { text-decoration: none; display: inline-block; }
+
+.brag { margin: 0 0 14px; }
+.brag-row { display: flex; align-items: center; gap: 8px; }
+.brag-row span { font-size: 12px; color: var(--dim); white-space: nowrap; }
+.brag-row input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+}
+.brag-row input:focus { outline: none; border-color: var(--sage); }
+.brag.done .brag-row { display: none; }
+.brag-msg { margin: 8px 0 0; min-height: 16px; font-size: 12.5px; color: var(--dim); }
+.brag-msg.ok { color: var(--sage); }
+.brag-msg.err { color: #d9a08a; }
+.brag-msg a { color: var(--sage); font-weight: 600; }
+
+/* ---------- 게시판 ---------- */
+
+.tabs { display: flex; gap: 6px; }
+.tab {
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--dim);
+  cursor: pointer;
+}
+.tab.active { background: var(--panel); color: var(--ink); border-color: var(--sage); }
+
+.board-msg { margin: 0; font-size: 12.5px; color: var(--dim); min-height: 16px; }
+
+.entries { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+
+.entry {
+  display: grid;
+  grid-template-columns: 28px auto 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.entry.mine { border-color: var(--sage); box-shadow: 0 0 0 1px rgba(159, 182, 163, 0.35) inset; }
+
+.rank { font-size: 15px; font-weight: 700; color: var(--dim); text-align: center; font-variant-numeric: tabular-nums; }
+.entry:nth-child(-n+3) .rank { color: var(--sage); }
+
+.mini { display: block; border-radius: 6px; border: 1px solid var(--line); }
+
+.entry-body { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.entry-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.name { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.score { font-size: 16px; font-weight: 700; color: var(--sage); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.badge {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.meta { font-size: 11px; color: var(--dim); }
+.me { color: var(--sage); font-weight: 600; }

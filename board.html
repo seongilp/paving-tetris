@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1c1f22">
+<meta name="description" content="보도블록 자랑하기 게시판 — 예쁘게 깐 바닥 순위">
+<title>보도블록 — 자랑하기 게시판</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="app board-page">
+  <header class="head">
+    <div class="titles">
+      <h1>자랑하기 게시판</h1>
+      <p>예쁘게 깐 바닥들</p>
+    </div>
+    <a class="ghost-btn link-btn" href="./">게임으로</a>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" class="tab active" data-tab="top" role="tab" aria-selected="true">상위 50</button>
+    <button type="button" class="tab" data-tab="recent" role="tab" aria-selected="false">최근 20</button>
+  </nav>
+
+  <p id="board-msg" class="board-msg" aria-live="polite">불러오는 중…</p>
+  <ol id="list" class="entries"></ol>
+</main>
+
+<script type="module" src="board.js"></script>
+</body>
+</html>
