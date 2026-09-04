@@ -27,6 +27,21 @@
   <ol id="list" class="entries"></ol>
 </main>
 
+<div id="lightbox" class="overlay lightbox" hidden>
+  <div class="lightbox-card" role="dialog" aria-modal="true" aria-label="바닥 크게 보기">
+    <button type="button" id="lightbox-close" class="lightbox-close" aria-label="닫기">✕</button>
+    <canvas id="lightbox-canvas" class="lightbox-canvas"></canvas>
+    <div class="lightbox-info">
+      <div class="entry-top">
+        <b id="lightbox-name" class="name"></b>
+        <span id="lightbox-score" class="score"></span>
+      </div>
+      <div id="lightbox-badges" class="badges"></div>
+      <div id="lightbox-meta" class="meta"></div>
+    </div>
+  </div>
+</div>
+
 <script type="module" src="board.js"></script>
 </body>
 </html>
